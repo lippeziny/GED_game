@@ -1,20 +1,25 @@
 # Drive Hunt GED
 
-Jogo multiplayer de navegador para praticar organização, classificação e localização de documentos digitais. Interface mobile-first inspirada na experiência de navegação do Google Drive, com salas por link/código, contagem regressiva sincronizada, cronômetro de servidor e leaderboard em tempo real.
+Jogo multiplayer de navegador para praticar organização, classificação e localização de documentos digitais. Interface mobile-first inspirada na navegação do Google Drive, com salas por link/código, contagem regressiva sincronizada, cronômetro de servidor e leaderboard ao vivo.
 
 ## Recursos
 
-- Criar uma sala ou entrar por código/link (`/#/sala/CODIGO`).
+- Criar sala ou entrar por código/link (`/#/sala/CODIGO`).
 - Até 32 participantes por sala.
-- Início sincronizado após pelo menos duas pessoas entrarem e todos marcarem **Pronto**; contagem regressiva de 3 segundos.
-- Dez níveis em sequência, com dificuldade progressiva. A sala escolhe o nível inicial e avança após todos concluírem o nível atual.
-- Estrutura corporativa fictícia com pastas, subpastas e centenas de documentos textuais simulados.
-- Nomes padronizados com data, setor, tipo/assunto, identificador, versão e status.
-- Sem pesquisa por texto. A localização é feita navegando pelas pastas.
-- Ordenação por nome, tamanho ou extensão, com inversão crescente/decrescente.
-- Ao abrir o arquivo correto, o servidor registra o tempo e a posição; o ranking é transmitido em tempo real.
-- Opções de acessibilidade: tamanho do texto, alto contraste, redução de animações e botões ampliados. Há também leitura do desafio em voz alta quando o navegador oferece síntese de voz.
-- Visualização de documentos apenas como texto fictício. Nenhum arquivo real é armazenado.
+- Início sincronizado quando pelo menos duas pessoas estão na sala e todos os participantes conectados marcam **Pronto**; contagem regressiva de 3 segundos.
+- Dez níveis em sequência, com dificuldade progressiva.
+- Empresa fictícia com departamentos, pastas, subpastas e documentos textuais simulados.
+- Nomenclatura documental padronizada com data, setor, assunto, identificador, versão e status.
+- Sem barra de pesquisa: a pessoa localiza o arquivo navegando pelas pastas.
+- Ordenação por nome, tamanho e extensão, com inversão da ordem.
+- Ao abrir o documento correto, o servidor registra o tempo e a posição; o ranking é atualizado em tempo real.
+- QR Code para convite em **modo de apresentação em tela cheia**, adequado a projetores e monitores; no celular, a visualização ocupa a tela disponível.
+- Acessibilidade: tamanho do texto, alto contraste, redução de animações, botões maiores e leitura do desafio em voz alta quando suportada pelo navegador.
+- Os arquivos são objetos de texto fictícios, não uploads nem arquivos reais.
+
+## Estrutura do projeto
+
+**Atenção ao extrair o ZIP:** os arquivos do projeto ficam diretamente na raiz do repositório. A raiz deve mostrar `package.json`, `render.yaml`, `index.html`, `server/` e `src/`. Não deixe tudo dentro de uma subpasta `drive-hunt/` e não envie apenas o arquivo ZIP ao GitHub.
 
 ## Requisitos
 
@@ -38,30 +43,39 @@ npm run build
 npm start
 ```
 
-## Publicar no GitHub e Render
+Em produção, abra `/health`. Uma instalação válida responde com JSON contendo `\"ok\": true` e `\"buildReady\": true`. Se o build não existir, a rota `/` agora mostra uma página explicando a configuração necessária em vez de retornar um 404 genérico.
 
-1. Crie um repositório no GitHub, por exemplo `drive-hunt-ged`.
-2. Envie todo o conteúdo desta pasta para a raiz do repositório. Não envie `node_modules` nem `dist`.
-3. No Render, escolha **New + → Blueprint** e conecte o repositório. O arquivo `render.yaml` configura o serviço automaticamente.
-4. Alternativamente, crie um **Web Service** e use:
-   - **Runtime:** Node
-   - **Build Command:** `npm install && npm run build`
-   - **Start Command:** `npm start`
-   - **Environment Variable:** `NODE_ENV=production`
-5. Aguarde o deploy e abra o endereço `https://...onrender.com`.
+## Publicar no Render
 
-O frontend e o servidor Socket.IO são servidos pelo mesmo Web Service, portanto não é necessário configurar CORS, um banco de dados externo ou um segundo serviço.
+Este projeto é um **Web Service Node**, não um Static Site, porque o mesmo processo Node serve o frontend e mantém as conexões WebSocket do multiplayer.
 
-## Observações sobre salas e plano gratuito
+1. Extraia o ZIP e envie **o conteúdo da pasta** para a raiz de um repositório GitHub. Confira se `package.json` está no nível principal do repositório.
+2. No Render, selecione **New + → Web Service** (ou conecte o repositório pelo Blueprint, usando `render.yaml`).
+3. Se estiver configurando manualmente, deixe **Root Directory** vazio quando os arquivos estiverem na raiz do repositório. Se optou por manter o projeto dentro de uma subpasta, informe exatamente essa subpasta em Root Directory.
+4. Use:
+   - Runtime: `Node`
+   - Build Command: `npm install && npm run build`
+   - Start Command: `npm start`
+   - Environment Variable: `NODE_ENV=production`
+5. Faça o deploy e abra primeiro `https://SEU-SERVICO.onrender.com/health`. Confirme `ok: true` e `buildReady: true`; depois abra a raiz `/`.
 
-As salas e os resultados ficam em memória no processo Node. Isso mantém o projeto simples e sem custo de banco de dados, mas significa que uma sala será perdida se a instância reiniciar, dormir ou receber um novo deploy. Use o jogo para sessões ao vivo e evite atualizar/reimplantar durante uma partida.
+Se a página mostrar **O site ainda não foi compilado**, o servidor está acessível, mas o build não está no local esperado: corrija o Root Directory e confira os logs do comando de build. Se o próprio domínio mostrar o `Not Found` padrão do Render, confira se o serviço selecionado é **Web Service** e se o deploy está ativo, não Static Site ou uma URL antiga.
 
-No Render Free, serviços web podem dormir após 15 minutos sem tráfego de entrada. Mensagens WebSocket recebidas também contam como tráfego; os clientes nesta aplicação enviam um heartbeat enquanto estão em uma sala. Ao acordar, a primeira conexão pode demorar cerca de um minuto. Uma reinicialização ainda pode encerrar as conexões e apagar salas em andamento.
+## Alternativa gratuita: Northflank
 
-Para uma experiência persistente entre reinicializações, a próxima evolução recomendada é migrar o armazenamento de salas/resultados para PostgreSQL (por exemplo, Render Postgres ou Supabase) e usar um serviço sempre ativo para partidas importantes.
+O projeto também pode ser publicado no Northflank usando o repositório GitHub como serviço Node.js. Na criação do serviço, escolha build a partir do repositório, deixe a raiz do projeto como diretório de trabalho e configure o build como `npm install && npm run build` e o start como `npm start`. Exponha a porta HTTP definida por `PORT`; a aplicação também usa essa mesma porta para Socket.IO/WebSockets.
+
+O plano Developer Sandbox anuncia até 2 serviços, 1 banco de dados e até US$ 20/mês em recursos, com serviços sempre ativos (sem suspensão por inatividade). O uso permanece sujeito ao limite de recursos incluídos no Sandbox. O Northflank declara suporte a WebSockets em serviços públicos HTTP. Verifique os limites atuais da conta antes de uma apresentação com muitos participantes.
+
+## Observação sobre o plano gratuito do Render
+
+O Render pode suspender um Web Service Free após 15 minutos sem receber tráfego de entrada. Esta aplicação envia um heartbeat WebSocket a cada 2 minutos enquanto o jogador está em uma sala; desde a atualização de 24/02/2026, mensagens WebSocket recebidas contam como tráfego de entrada no Render. Assim, uma sala com participantes conectados tende a manter o serviço acordado. O Render ainda pode reiniciar a instância, e qualquer reinício derruba as conexões e apaga as salas em memória.
+
+## Salas e persistência
+
+As salas e os resultados ficam em memória no processo Node. Isso mantém o projeto simples e sem custo de banco de dados, mas significa que uma sala será perdida se a instância reiniciar, suspender ou receber um novo deploy. Use o jogo para sessões ao vivo e evite atualizar/reimplantar durante uma partida. Para histórico permanente, a próxima evolução recomendada é persistir os resultados em PostgreSQL.
 
 ## Privacidade e uso educativo
 
 - A empresa NEXA Soluções Integradas e todos os documentos são fictícios.
-- Não solicite nem insira senhas, documentos reais ou dados pessoais dos participantes.
-- Os arquivos são objetos de texto renderizados no navegador, não uploads nem documentos baixáveis.
+- Use apelidos; não insira senhas, documentos reais nem dados pessoais dos participantes.

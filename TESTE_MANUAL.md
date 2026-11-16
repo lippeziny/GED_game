@@ -1,18 +1,31 @@
-# Roteiro de teste antes da aula
+# Testes manuais — Drive Hunt GED
 
-1. Abra o site em dois celulares ou em duas janelas anônimas.
-2. No primeiro, crie uma sala no nível 1 e copie o link.
-3. No segundo, abra o link, informe outro nome e entre.
-4. Nos dois dispositivos, marque **Estou pronto**. Confira a contagem regressiva de 3 segundos.
-5. No gerenciador de arquivos, abra algumas pastas e subpastas. Confirme que não há campo nem botão de pesquisa.
-6. Teste a ordenação por **Nome**, **Tamanho** e **Extensão**, alternando a ordem crescente/decrescente.
-7. Abra um arquivo incorreto: a visualização textual deve abrir, sem marcar ponto.
-8. Localize e abra exatamente o arquivo indicado no cartão de desafio. O servidor deve atribuir tempo e posição e atualizar o ranking nos dois dispositivos.
-9. Conclua com os dois participantes e confirme a tela de resultados. O organizador poderá avançar ao próximo nível.
-10. Repita em uma tela pequena e teste tamanho do texto, alto contraste, redução de animações e botões ampliados.
+## Deploy / diagnóstico
+- [ ] A raiz do repositório contém `package.json`, `render.yaml`, `index.html`, `src/` e `server/`.
+- [ ] O serviço é do tipo Web Service (não Static Site).
+- [ ] `npm install && npm run build` termina sem erros.
+- [ ] `npm start` inicia o servidor na porta recebida por `PORT`.
+- [ ] `/health` responde `ok: true` e `buildReady: true`.
+- [ ] `/` abre a tela inicial do jogo, não uma página 404.
 
-## Nomes padronizados usados
+## Salas e convite
+- [ ] Criar uma sala gera um código de seis caracteres.
+- [ ] O link compartilhado contém `#/sala/CODIGO` e abre a tela de entrada.
+- [ ] O botão **QR em tela cheia** abre um QR que pode ser lido pelo celular.
+- [ ] Em computador, a apresentação ocupa a tela inteira e fecha por Esc ou pelo botão Fechar.
+- [ ] Em celular, o QR e os controles cabem na tela sem rolagem horizontal.
+- [ ] Pelo menos duas pessoas conseguem entrar e marcar Pronto.
+- [ ] A contagem de 3 segundos é sincronizada.
 
-`AAAA-MM-DD_SETOR_TIPO-ASSUNTO_IDENTIFICADOR_vNN_STATUS.ext`
+## Partida
+- [ ] A navegação de pastas funciona por toque e clique.
+- [ ] Não existe campo ou botão de pesquisa de documentos.
+- [ ] Ordenar por nome, tamanho e extensão funciona nos dois sentidos.
+- [ ] Abrir um documento incorreto exibe seu conteúdo fictício e não registra conclusão.
+- [ ] Abrir o documento correto registra tempo e posição e atualiza o ranking em tempo real.
+- [ ] Os dez níveis funcionam e a sala avança quando todos terminam.
 
-Exemplo: `2025-06-30_FIN_RELATORIO-FECHAMENTO-MENSAL_2025-06_v02_APROVADO.xlsx`.
+## Acessibilidade e dispositivos
+- [ ] Aumentar/diminuir texto funciona.
+- [ ] Alto contraste, redução de animações e botões maiores funcionam.
+- [ ] A interface é utilizável em tela de celular e computador.

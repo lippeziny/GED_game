@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
+import { QRCodeSVG } from 'qrcode.react';
 import {
   ArrowDownWideNarrow, ArrowLeft, ArrowUpDown, ArrowUpWideNarrow, Bell, Check,
   CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleHelp, Clipboard,
@@ -7,7 +8,7 @@ import {
   FileText, FileType, FileVideo, Folder, FolderOpen, HardDrive, Home, Info,
   ListFilter, LockKeyhole, LogOut, Maximize2, Medal, Menu, Mic, Minus, Plus,
   RefreshCw, ShieldCheck, SlidersHorizontal, Sparkles, Star, Timer, Trophy,
-  Users, Volume2, X, Zap,
+  Users, Volume2, X, Zap, QrCode, Monitor,
 } from 'lucide-react';
 import { LEVELS, ROOT_FOLDER, findFileById, formatBytes } from './data/gameData.js';
 
@@ -119,8 +120,10 @@ function App() {
   const [showAccessibility, setShowAccessibility] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(true);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [showQrPresentation, setShowQrPresentation] = useState(false);
 
   const activePlayer = room?.players?.find((player) => player.id === playerId);
+  const inviteUrl = room ? `${window.location.origin}${window.location.pathname}#/sala/${room.code}` : '';
   const isHost = room?.hostId === playerId;
   const level = room ? LEVELS.find((item) => item.level === room.level) || LEVELS[0] : null;
   const currentFolderId = folderStack[folderStack.length - 1];
@@ -265,6 +268,41 @@ function App() {
       copyInvite();
     }
   };
+
+  const openQrPresentation = async () => {
+    if (!room) return;
+    setShowQrPresentation(true);
+    // Call Fullscreen API directly in the click gesture; the overlay itself covers the viewport as fallback.
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch { /* The fixed presentation overlay still fills the viewport. */ }
+  };
+
+  const closeQrPresentation = async () => {
+    setShowQrPresentation(false);
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+    } catch { /* Ignore browsers that do not expose the Fullscreen API. */ }
+  };
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) setShowQrPresentation(false);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape' && showQrPresentation && !document.fullscreenElement) {
+        setShowQrPresentation(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showQrPresentation]);
 
   const leaveRoom = () => {
     if (room) socketRef.current?.emit('room:leave', { roomCode: room.code, playerId });
@@ -439,7 +477,7 @@ function App() {
             <div className="lobby-overline">SALA DE DESAFIO <span>•</span> {room.code}</div>
             <h1>Prepare-se para<br /><em>caçar arquivos.</em></h1>
             <p>Compartilhe o convite. A rodada começa automaticamente quando pelo menos duas pessoas estiverem conectadas e todos marcarem “Pronto”.</p>
-            <div className="invite-share-row"><div className="invite-code"><span>CÓDIGO</span><strong>{room.code}</strong></div><button className="secondary-button" onClick={copyInvite}><Clipboard size={17} /> Copiar link</button><button className="icon-button share-button" onClick={shareInvite} aria-label="Compartilhar convite"><Users size={18} /></button></div>
+            <div className="invite-share-row"><div className="invite-code"><span>CÓDIGO</span><strong>{room.code}</strong></div><button className="secondary-button" onClick={copyInvite}><Clipboard size={17} /> Copiar link</button><button className="secondary-button qr-trigger" onClick={openQrPresentation}><QrCode size={17} /> QR em tela cheia</button><button className="icon-button share-button" onClick={shareInvite} aria-label="Compartilhar convite"><Users size={18} /></button></div>
             <div className="selected-level-card">
               <div className={`level-number ${level?.color}`}>{String(room.level).padStart(2, '0')}</div>
               <div><span>NÍVEL INICIAL • {level?.difficulty?.toUpperCase()}</span><strong>{level?.title}</strong><small>A partida seguirá pelos níveis seguintes após todos concluírem.</small></div>
@@ -581,6 +619,30 @@ function App() {
             <div className="success-live-note"><Trophy size={15} /> A classificação continua sendo atualizada para todos.</div>
             <button className="primary-button full-button" onClick={() => setWinner(null)}>Ver sala e classificação <ChevronRight size={17} /></button>
           </section>
+        </div>
+      )}
+
+      {showQrPresentation && room && (
+        <div className="qr-presentation" role="dialog" aria-modal="true" aria-labelledby="qr-presentation-title">
+          <div className="qr-presentation-top">
+            <div className="qr-presentation-brand"><span className="brand-icon"><HardDrive size={21} /></span><span><strong>Drive Hunt GED</strong><small>Convite para partida multiplayer</small></span></div>
+            <button className="qr-close-button" onClick={closeQrPresentation} aria-label="Fechar apresentação do QR Code"><X size={22} /><span>Fechar</span></button>
+          </div>
+          <div className="qr-presentation-main">
+            <div className="qr-presentation-copy">
+              <div className="qr-presentation-eyebrow"><Monitor size={16} /> MODO APRESENTAÇÃO</div>
+              <h1 id="qr-presentation-title">Entre na sala<br /><em>pelo celular.</em></h1>
+              <p>Aponte a câmera do celular para o QR Code. O convite abre diretamente esta sala.</p>
+              <div className="qr-room-code"><span>CÓDIGO DA SALA</span><strong>{room.code}</strong></div>
+              <div className="qr-hint"><Users size={16} /> {room.players.length} participante{room.players.length === 1 ? '' : 's'} conectado{room.players.length === 1 ? '' : 's'} • até 32 jogadores</div>
+            </div>
+            <div className="qr-presentation-card">
+              <div className="qr-code-frame"><QRCodeSVG value={inviteUrl} size={440} level="H" includeMargin /></div>
+              <strong>ESCANEIE PARA JOGAR</strong>
+              <span>drive-hunt • sala {room.code}</span>
+            </div>
+          </div>
+          <div className="qr-presentation-bottom"><span>DRIVE HUNT GED <i>•</i> NEXA SOLUÇÕES INTEGRADAS</span><button onClick={copyInvite}><Clipboard size={16} /> Copiar link de convite</button></div>
         </div>
       )}
 

@@ -402,10 +402,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
   .lobby-main-card { padding: 25px 17px 20px; border-radius: 17px; }
   .lobby-main-card h1 { font-size: 29px; }
   .lobby-main-card > p { font-size: 11px; }
-  .invite-share-row { gap: 7px; }
-  .invite-code { min-width: 103px; padding: 8px 9px; }
+  .invite-share-row { gap: 7px; flex-wrap: wrap; }
+  .invite-code { min-width: 103px; flex: 1 1 100%; padding: 8px 9px; }
   .invite-code strong { font-size: 15px; letter-spacing: 1.5px; }
-  .invite-share-row .secondary-button { padding: 0 11px; min-height: 42px; font-size: 10px; }
+  .invite-share-row .secondary-button { flex: 1 1 auto; padding: 0 11px; min-height: 42px; font-size: 10px; }
   .share-button { min-width: 42px; min-height: 42px; }
   .selected-level-card { gap: 10px; padding: 11px; }
   .selected-level-card > div:nth-child(2) small { max-width: 190px; line-height: 1.4; }
@@ -511,4 +511,73 @@ button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focu
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+}
+
+/* Full-screen QR invitation for classroom/projector use. */
+.qr-trigger { border-color: rgba(207,181,255,.28); color: #d6c2ff; background: rgba(207,181,255,.07); }
+.qr-trigger:hover { background: rgba(207,181,255,.14); }
+.qr-presentation {
+  position: fixed;
+  z-index: 300;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  padding: clamp(18px, 3vw, 42px) clamp(18px, 5vw, 72px);
+  box-sizing: border-box;
+  overflow: auto;
+  color: #f4f6fb;
+  background: radial-gradient(ellipse at 18% 20%, rgba(111,145,211,.18), transparent 38%), radial-gradient(ellipse at 85% 80%, rgba(173,139,231,.16), transparent 36%), #11151d;
+  display: flex;
+  flex-direction: column;
+}
+.qr-presentation:fullscreen { overflow: auto; }
+.qr-presentation-top, .qr-presentation-bottom { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.qr-presentation-brand { display: flex; align-items: center; gap: 12px; }
+.qr-presentation-brand > span:last-child { display: flex; flex-direction: column; gap: 3px; }
+.qr-presentation-brand strong { font: 800 17px Manrope, sans-serif; letter-spacing: -.3px; }
+.qr-presentation-brand small { color: #9ba8bd; font-size: 11px; }
+.qr-close-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 15px; border: 1px solid rgba(255,255,255,.16); border-radius: 12px; background: rgba(255,255,255,.07); color: #e8edf6; }
+.qr-presentation-main { width: min(1250px, 100%); margin: auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 500px); align-items: center; justify-content: center; gap: clamp(30px, 7vw, 100px); }
+.qr-presentation-copy { max-width: 570px; }
+.qr-presentation-eyebrow { display: flex; align-items: center; gap: 9px; color: #a8c7fa; font: 600 11px 'DM Mono', monospace; letter-spacing: 1.7px; }
+.qr-presentation-copy h1 { margin: 23px 0 15px; font: 800 clamp(42px, 5.3vw, 76px)/1.02 Manrope, sans-serif; letter-spacing: -3px; }
+.qr-presentation-copy h1 em { color: #cdb5ff; font-style: normal; }
+.qr-presentation-copy > p { max-width: 470px; color: #b6c0d0; font-size: clamp(14px, 1.3vw, 18px); line-height: 1.7; }
+.qr-room-code { display: inline-flex; flex-direction: column; gap: 7px; margin-top: 20px; padding: 15px 20px; border: 1px solid rgba(168,199,250,.24); border-radius: 15px; background: rgba(168,199,250,.08); }
+.qr-room-code span { color: #9fb8de; font: 600 10px 'DM Mono', monospace; letter-spacing: 1.7px; }
+.qr-room-code strong { color: #d7e5ff; font: 800 clamp(24px, 3vw, 36px) 'DM Mono', monospace; letter-spacing: 5px; }
+.qr-hint { display: flex; align-items: center; gap: 8px; margin-top: 18px; color: #919eb2; font-size: 12px; }
+.qr-presentation-card { width: min(100%, 500px); justify-self: center; padding: clamp(18px, 2.4vw, 30px); box-sizing: border-box; border-radius: 26px; background: #fff; color: #1a2230; text-align: center; box-shadow: 0 28px 90px rgba(0,0,0,.35); }
+.qr-code-frame { width: min(100%, 440px); margin: 0 auto 17px; display: grid; place-items: center; }
+.qr-code-frame svg { display: block; width: 100%; height: auto; }
+.qr-presentation-card > strong { display: block; font: 800 13px Manrope, sans-serif; letter-spacing: 1.5px; }
+.qr-presentation-card > span { display: block; margin-top: 6px; color: #667085; font: 500 10px 'DM Mono', monospace; }
+.qr-presentation-bottom { color: #78869a; font: 500 9px 'DM Mono', monospace; letter-spacing: 1px; }
+.qr-presentation-bottom i { color: #cdb5ff; font-style: normal; margin: 0 7px; }
+.qr-presentation-bottom button { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 13px; border: 1px solid rgba(255,255,255,.15); border-radius: 11px; background: rgba(255,255,255,.06); color: #dce5f3; font-size: 11px; }
+@media (max-width: 760px) {
+  .qr-presentation { padding: 15px; }
+  .qr-presentation-main { width: 100%; grid-template-columns: 1fr; gap: 18px; margin: 25px auto; }
+  .qr-presentation-copy { text-align: center; }
+  .qr-presentation-eyebrow, .qr-hint { justify-content: center; }
+  .qr-presentation-copy h1 { margin: 12px 0 8px; font-size: clamp(31px, 9vw, 48px); letter-spacing: -1.7px; }
+  .qr-presentation-copy > p { margin: 0 auto; max-width: 430px; font-size: 12px; }
+  .qr-room-code { margin-top: 13px; padding: 9px 15px; }
+  .qr-room-code strong { font-size: 22px; }
+  .qr-hint { margin-top: 10px; font-size: 10px; }
+  .qr-presentation-card { width: min(76vw, 340px); padding: 12px; border-radius: 18px; }
+  .qr-code-frame { width: min(100%, 300px); margin-bottom: 8px; }
+  .qr-presentation-card > strong { font-size: 10px; }
+  .qr-presentation-card > span { font-size: 8px; }
+  .qr-presentation-bottom { justify-content: center; flex-wrap: wrap; text-align: center; }
+  .qr-presentation-bottom > span { display: none; }
+}
+@media (max-width: 430px) {
+  .qr-presentation-top { align-items: flex-start; }
+  .qr-presentation-brand strong { font-size: 14px; }
+  .qr-presentation-brand small { font-size: 9px; }
+  .qr-close-button { min-height: 38px; padding: 0 10px; font-size: 10px; }
+  .qr-presentation-main { gap: 14px; }
+  .qr-presentation-card { width: min(72vw, 285px); }
 }

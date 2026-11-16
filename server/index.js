@@ -2,6 +2,7 @@ import express from 'express';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { Server } from 'socket.io';
 import { LEVELS } from '../src/data/gameData.js';
 
@@ -301,15 +302,34 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000).unref();
 
-if (process.env.NODE_ENV !== 'production') {
-  // Vite proxies /socket.io to this process during local development.
-  app.get('/health', (_req, res) => res.json({ ok: true, rooms: rooms.size }));
-} else {
-  const distPath = path.resolve(__dirname, '../dist');
-  app.use(express.static(distPath, { maxAge: '1h' }));
-  app.get('*', (_req, res) => res.sendFile(path.join(distPath, 'index.html')));
+const distPath = path.resolve(__dirname, '../dist');
+const indexHtmlPath = path.join(distPath, 'index.html');
+
+// Render (and other hosts) can use this endpoint as a deployment health check.
+app.get('/health', (_req, res) => {
+  const buildReady = process.env.NODE_ENV !== 'production' || existsSync(indexHtmlPath);
+  res.status(buildReady ? 200 : 503).json({
+    ok: buildReady,
+    service: 'drive-hunt-ged',
+    buildReady,
+    rooms: rooms.size,
+    hint: buildReady ? undefined : 'The frontend build is missing. Run npm install && npm run build from the project root.'
+  });
+});
+
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(distPath, { maxAge: '1h', index: 'index.html' }));
+  app.get('*', (_req, res) => {
+    if (!existsSync(indexHtmlPath)) {
+      return res.status(503).type('html').send(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Drive Hunt GED — configuração pendente</title><body style="margin:0;background:#17191e;color:#f4f6fb;font:16px system-ui;display:grid;min-height:100vh;place-items:center;padding:24px;box-sizing:border-box"><main style="max-width:650px;background:#242933;border:1px solid #3a4352;border-radius:20px;padding:32px"><h1>Drive Hunt GED</h1><h2>O site ainda não foi compilado.</h2><p>O servidor iniciou, mas não encontrou <code>dist/index.html</code>.</p><p>No serviço de hospedagem, configure o comando de build como <code>npm install && npm run build</code> e o comando de inicialização como <code>npm start</code>. A raiz do serviço deve conter <code>package.json</code>, <code>render.yaml</code> e a pasta <code>src/</code>.</p><p>Consulte o README incluído no projeto para conferir a configuração.</p></main></body></html>`);
+    }
+    return res.sendFile(indexHtmlPath);
+  });
 }
 
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Drive Hunt GED ativo na porta ${PORT}`);
+  if (process.env.NODE_ENV === 'production' && !existsSync(indexHtmlPath)) {
+    console.error(`Build ausente: ${indexHtmlPath}. Execute npm run build na raiz do projeto.`);
+  }
 });
