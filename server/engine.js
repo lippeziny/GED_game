@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 import {
   TOTAL_LEVELS, COUNTDOWN_MS, MAX_PLAYERS, NICK_MIN, NICK_MAX, DEFAULT_POINTS,
-  ROUND_SECONDS, TIPS, LEVEL_META, pointsForPlace,
+  ROUND_SECONDS, TIPS, LEVEL_META, ERROR_PENALTY, scoreFor,
 } from '../shared/constants.js';
 import { buildLevel } from './tree.js';
 
@@ -27,9 +27,10 @@ const safeEqual = (a, b) => {
 const fail = (error, code = 'invalid') => ({ ok: false, error, code });
 
 export class GameEngine {
-  constructor({ now = () => Date.now(), points = DEFAULT_POINTS, roundSeconds = ROUND_SECONDS, maxRooms = 300, onChange = () => {} } = {}) {
+  constructor({ now = () => Date.now(), points = DEFAULT_POINTS, errorPenalty = ERROR_PENALTY, roundSeconds = ROUND_SECONDS, maxRooms = 300, onChange = () => {} } = {}) {
     this.now = now;
     this.points = points;
+    this.errorPenalty = errorPenalty;
     this.roundSeconds = roundSeconds;
     this.maxRooms = maxRooms;
     this.onChange = onChange;
@@ -79,7 +80,7 @@ export class GameEngine {
     const player = {
       id: crypto.randomUUID(), token: secret(), nick: n.nick, key: n.key, online: true,
       joinedAt: this.now(), order: room.players.length, eligibleFrom: room.phase === 'lobby' ? 1 : room.level + 1,
-      total: 0, totalMs: 0, results: [], wrong: {}, removed: false,
+      total: 0, totalMs: 0, results: [], wrong: {}, wrongIds: {}, removed: false,
     };
     room.players.push(player);
     this._touch(room);
@@ -250,12 +251,15 @@ export class GameEngine {
     const file = this._findFile(this._tree(room, r.level).root, fileId);
     if (!file) return fail('Documento inexistente.');
     if (fileId !== r.targetId) {
-      p.wrong[r.level] = (p.wrong[r.level] || 0) + 1;
-      return { ok: true, correct: false };
+      p.wrongIds ||= {};
+      const seen = (p.wrongIds[r.level] ||= []);
+      if (!seen.includes(fileId)) { seen.push(fileId); p.wrong[r.level] = seen.length; this._touch(room); } // reabrir o mesmo arquivo não conta de novo
+      return { ok: true, correct: false, errors: p.wrong[r.level] || 0 };
     }
     const elapsedMs = this.elapsed(room);
     const place = r.results.length + 1;
-    const result = { playerId: p.id, nick: p.nick, level: r.level, elapsedMs, place, points: pointsForPlace(place, this.points) };
+    const errors = p.wrong[r.level] || 0;
+    const result = { playerId: p.id, nick: p.nick, level: r.level, elapsedMs, place, errors, points: scoreFor(place, errors, this.points, this.errorPenalty) };
     r.results.push(result);
     p.results.push(result);
     p.total += result.points; p.totalMs += elapsedMs;
@@ -274,9 +278,11 @@ export class GameEngine {
 
   // ---------- Ranking ----------
   standings(room) {
-    const list = this._active(room).slice().sort((a, b) => b.total - a.total || (a.totalMs - b.totalMs) || a.order - b.order);
+    const errs = (p) => Object.values(p.wrong || {}).reduce((a, n) => a + n, 0);
+    // Pontos (tempo + erros) → menos erros → menor tempo total → ordem de entrada
+    const list = this._active(room).slice().sort((a, b) => b.total - a.total || errs(a) - errs(b) || (a.totalMs - b.totalMs) || a.order - b.order);
     return list.map((p, i) => ({
-      pos: i + 1, id: p.id, nick: p.nick, total: p.total, totalMs: p.totalMs, levelsDone: p.results.length, online: p.online,
+      pos: i + 1, id: p.id, nick: p.nick, total: p.total, totalMs: p.totalMs, errors: errs(p), levelsDone: p.results.length, online: p.online,
       last: p.results.find((x) => x.level === room.level) || null,
     }));
   }
@@ -309,7 +315,7 @@ export class GameEngine {
     const ended = ['roundEnd', 'finished'].includes(room.phase);
     return {
       ...v, role: 'player',
-      me: { id: player.id, nick: player.nick, total: player.total, totalMs: player.totalMs, pos: me?.pos ?? null, levelsDone: player.results.length, eligible: Boolean(inRound), waitingNext: !inRound && room.phase !== 'lobby' && room.phase !== 'finished', result: mine ? { ...mine } : null },
+      me: { id: player.id, nick: player.nick, total: player.total, totalMs: player.totalMs, errors: r && r.level === room.level ? (player.wrong[r.level] || 0) : 0, totalErrors: me?.errors ?? 0, pos: me?.pos ?? null, levelsDone: player.results.length, eligible: Boolean(inRound), waitingNext: !inRound && room.phase !== 'lobby' && room.phase !== 'finished', result: mine ? { ...mine } : null },
       challenge: ['countdown', 'playing', 'paused', 'roundEnd'].includes(room.phase) ? this._challenge(room, ended) : null,
       progress: r ? { found: r.results.length, of: r.participants.length } : null,
       roundResults: ended && r ? r.results.map((x) => ({ ...x })) : [],

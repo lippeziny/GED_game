@@ -1,12 +1,18 @@
-import { File, FileSpreadsheet, FileText, FileType } from 'lucide-react';
-
-export function fileIcon(ext, size = 20) {
-  if (['xlsx', 'csv'].includes(ext)) return <FileSpreadsheet size={size} aria-hidden="true" />;
-  if (ext === 'pptx') return <FileType size={size} aria-hidden="true" />;
-  if (['pdf', 'docx', 'txt'].includes(ext)) return <FileText size={size} aria-hidden="true" />;
-  return <File size={size} aria-hidden="true" />;
+// Ícones no estilo "Office/Windows 11": pasta amarela e arquivos com selo colorido da extensão.
+export function FolderIcon({ size = 24, open = false }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+      <path d="M3 8.5A2.5 2.5 0 0 1 5.5 6h6.2c.7 0 1.3.3 1.8.8l1.4 1.4c.4.4 1 .6 1.6.6H26.5A2.5 2.5 0 0 1 29 11.3V24.5A2.5 2.5 0 0 1 26.5 27h-21A2.5 2.5 0 0 1 3 24.5z" fill="#e6a417" />
+      <path d={open ? 'M3 13.5A2.5 2.5 0 0 1 5.5 11H27a2 2 0 0 1 1.9 2.6l-2.6 10.1A2.5 2.5 0 0 1 23.900 25.500H5.500A2.5 2.500 0 0 1 3 23z' : 'M3 12.500A2.500 2.500 0 0 1 5.500 10H26.500A2.500 2.500 0 0 1 29 12.500V24.500A2.500 2.500 0 0 1 26.500 27H5.500A2.500 2.500 0 0 1 3 24.500z'} fill="#ffcf4a" />
+    </svg>
+  );
 }
-export const fileTone = (ext) => (['xlsx', 'csv'].includes(ext) ? 'green' : ext === 'pptx' ? 'orange' : ext === 'pdf' ? 'red' : 'blue');
+
+const EXT_LABEL = { pdf: 'PDF', docx: 'W', xlsx: 'X', pptx: 'P', txt: 'TXT', csv: 'CSV' };
+export function FileGlyph({ ext, size = 28 }) {
+  return <span className={`dh-fi ${ext}`} style={{ width: size, height: size * 1.2, fontSize: size * (EXT_LABEL[ext]?.length > 1 ? 0.3 : 0.5) }} aria-hidden="true">{EXT_LABEL[ext] || ext.slice(0, 3).toUpperCase()}</span>;
+}
+export const TYPE_NAME = { pdf: 'Documento PDF', docx: 'Documento do Word', xlsx: 'Planilha do Excel', pptx: 'Apresentação do PowerPoint', txt: 'Documento de texto', csv: 'Arquivo CSV' };
 
 export function sortItems(items, key, dir) {
   const sign = dir === 'asc' ? 1 : -1;

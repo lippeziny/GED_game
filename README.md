@@ -1,4 +1,4 @@
-# Drive Hunt GED — v1.0
+# Drive Hunt GED — v1.1
 
 Jogo educacional multiplayer de Gestão Eletrônica de Documentos. O professor cria a partida (PIN + link + QR Code), os alunos entram pelo celular e disputam **10 níveis** na mesma sessão, localizando um documento-alvo **navegando manualmente** pelas pastas de uma empresa fictícia (não existe busca).
 
@@ -6,8 +6,10 @@ Jogo educacional multiplayer de Gestão Eletrônica de Documentos. O professor c
 - **Professor (apresentador):** não pontua nem aparece no ranking. Controla: iniciar, pausar/retomar, encerrar rodada, exibir ranking parcial, avançar de nível, bloquear entradas, permitir entrada tardia, remover participante, encerrar sessão.
 - **Jogadores:** entram por PIN, link ou QR Code com um apelido (único na sala, sem acento/caixa).
 - **Rodada:** contagem de 3 s → cronômetro único do servidor → o jogador abre o documento → o servidor valida, registra tempo, colocação e pontos. A rodada termina quando todos acham, o tempo limite acaba (90 s no nível 1 até 360 s no nível 10) ou o professor encerra.
-- **Pontuação:** 1000/900/800/700/600 e depois −50 por colocação (mínimo 100); configurável em `PONTOS_POR_COLOCACAO`. Desempate: menor tempo total, depois ordem de entrada. Quem não conclui não pontua.
-- **Níveis:** cada um gera sua própria árvore (de ~28 arquivos/2 setores no nível 1 a ~1.450 arquivos/10 setores/6 níveis de pasta no nível 10) com armadilhas: versões antigas, rascunhos, extensões diferentes, mesmo documento em outro setor e nomes fora do padrão. O alvo é único (verificado por teste).
+- **Pontuação (tempo + erros):** a colocação da rodada vem do tempo (1000/900/800/700/600, depois −50 por colocação, mínimo 100) e cada documento errado aberto desconta 50 pontos (piso de 100 para quem concluiu). Reabrir o mesmo arquivo errado não conta de novo. Classificação final: mais pontos → menos erros → menor tempo total → ordem de entrada. Quem não conclui não pontua. Configurável em `PONTOS_POR_COLOCACAO` e `PENALIDADE_POR_ERRO`.
+- **Níveis:** cada um gera sua própria árvore (de ~36 arquivos/2 setores no nível 1 a ~2.500 arquivos/10 setores/5 níveis de pasta no nível 10, ~500 KB enviados por rodada) com armadilhas: versões antigas, rascunhos, extensões diferentes, mesmo documento em outro setor e nomes fora do padrão. Segue padrões de GED: códigos do plano de classificação nas pastas (`01 - Recursos Humanos` › `01.1 - Admissões`), áreas comuns (Correspondências, Relatórios e Atas, Modelos e Formulários, Controle e Registros), fases do ciclo de vida (Corrente/Intermediária/Permanente), pastas por ano e nomes `TIPO_ASSUNTO_SETOR_ANO_Vnn[_STATUS].ext`. O alvo é único (verificado por teste).
+- **Explorador estilo Windows 11:** barra de comandos (voltar, subir, endereço, classificar por nome/tamanho/extensão em ordem crescente ou decrescente, detalhes/ícones), painel de pastas em árvore (gaveta no celular), pastas e arquivos com ícones por tipo e **painel de visualização lateral** (folha inferior no celular) que não cobre a lista.
+- **Pódio final** estilo Kahoot com pontos, níveis concluídos, erros e tempo total.
 - **Servidor é a autoridade:** tempo, validação do alvo, pontos e ranking. O cliente nunca recebe qual arquivo é o alvo; só envia o id do arquivo aberto.
 
 ## Executar localmente
@@ -41,5 +43,5 @@ tests/   engine.test.mjs · sockets.test.mjs
 Identidade vinculada ao socket (token do professor/jogador nunca vem do payload após a autenticação), comparação de tokens em tempo constante, validação de tipo/tamanho de todo evento, limite de eventos por socket, limite de tentativas inválidas de PIN/retomada e de criação de salas por IP, isolamento por sala, uma conclusão por jogador por nível, bloqueio de pontos retroativos.
 
 ## O que foi testado
-`npm test` (22 testes): sessões/PIN, apelidos, permissões, cronômetro/pausa, pontuação, empate, 10 níveis com 7 jogadores simulados, entrada tardia/bloqueio, reconexão, persistência, árvores (alvo único em várias sementes), adaptador de sockets (fluxo completo, reconexão, limites). Também foi executado um teste ponta a ponta no Chromium (professor + 4 jogadores, 10 níveis, pausa, ranking, entrada tardia, bloqueio, reconexão por recarga, pódio e encerramento).
+`npm test` (24 testes, incluindo erros/penalidade/desempate): sessões/PIN, apelidos, permissões, cronômetro/pausa, pontuação, empate, 10 níveis com 7 jogadores simulados, entrada tardia/bloqueio, reconexão, persistência, árvores (alvo único em várias sementes), adaptador de sockets (fluxo completo, reconexão, limites). Também foi executado um teste ponta a ponta no Chromium (professor + 4 jogadores, 10 níveis, pausa, ranking, entrada tardia, bloqueio, reconexão por recarga, pódio e encerramento).
 **Ainda não verificado:** execução com o pacote real `socket.io` e o build Vite (ambiente sem acesso à internet; use `npm install`, `npm test` e `npm run build` no seu ambiente), visual dos ícones reais e de QR Code legível por câmera, publicação na internet.

@@ -8,6 +8,7 @@ export const NICK_MAX = 20;
 export const DEFAULT_POINTS = [1000, 900, 800, 700, 600];
 export const MIN_POINTS = 100; // piso para colocações além da tabela
 export const POINTS_STEP = 50; // decréscimo por colocação após a tabela
+export const ERROR_PENALTY = 50; // pontos descontados por documento errado aberto (configurável)
 
 export const LEVEL_META = [
   { level: 1, title: 'Introdução', difficulty: 'Muito fácil', color: 'easy' },
@@ -27,6 +28,11 @@ export function pointsForPlace(place, table = DEFAULT_POINTS) {
   if (place <= table.length) return table[place - 1];
   const last = table[table.length - 1];
   return Math.max(MIN_POINTS, last - (place - table.length) * POINTS_STEP);
+}
+
+// Pontos da rodada: colocação (tempo) menos penalidade por erros, com piso para quem concluiu.
+export function scoreFor(place, errors, table = DEFAULT_POINTS, penalty = ERROR_PENALTY) {
+  return Math.max(MIN_POINTS, pointsForPlace(place, table) - Math.max(0, errors) * penalty);
 }
 
 export function formatMs(ms = 0) {

@@ -7,7 +7,7 @@ import { Server } from 'socket.io';
 import { GameEngine } from './engine.js';
 import { FileStore, NullStore } from './store.js';
 import { registerSockets } from './sockets.js';
-import { DEFAULT_POINTS } from '../shared/constants.js';
+import { DEFAULT_POINTS, ERROR_PENALTY } from '../shared/constants.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3000);
@@ -38,7 +38,8 @@ const io = new Server(httpServer, {
   cors: CLIENT_ORIGIN ? { origin: CLIENT_ORIGIN.split(',').map((s) => s.trim()) } : undefined,
 });
 
-const engine = new GameEngine({ points: parsePoints(process.env.PONTOS_POR_COLOCACAO) });
+const penalty = Number(process.env.PENALIDADE_POR_ERRO);
+const engine = new GameEngine({ points: parsePoints(process.env.PONTOS_POR_COLOCACAO), errorPenalty: Number.isFinite(penalty) && penalty >= 0 && process.env.PENALIDADE_POR_ERRO ? penalty : ERROR_PENALTY });
 const store = process.env.PERSISTENCE === 'off' ? new NullStore() : new FileStore(DATA_DIR);
 engine.restore(store.load());
 registerSockets(io, engine, { store, trustProxy });

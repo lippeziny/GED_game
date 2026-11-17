@@ -28,20 +28,29 @@ export const DEPTS = [
 
 const EXTS = ['pdf', 'docx', 'xlsx', 'pptx', 'txt', 'csv'];
 const KB = { pdf: [180, 980], docx: [90, 620], xlsx: [120, 1450], pptx: [350, 2600], txt: [8, 85], csv: [25, 340] };
-const TIERS = [['Vigentes', 'Em tramitação', 'Arquivo'], ['Originais', 'Cópias', 'Anexos'], ['Interno', 'Externo']];
+// Níveis intermediários inspirados no ciclo de vida documental (arquivo corrente, intermediário e permanente).
+const TIERS = [['Fase Corrente', 'Fase Intermediária', 'Fase Permanente'], ['Originais', 'Cópias', 'Anexos'], ['Interno', 'Externo']];
+// Áreas comuns a todos os setores (plano de classificação).
+const COMMON = [
+  { name: 'Correspondências', docs: [['OFICIO', 'EXPEDIDO'], ['CIRCULAR', 'INTERNA'], ['MEMORANDO', 'INTERNO']] },
+  { name: 'Relatórios e Atas', docs: [['RELATORIO', 'GERENCIAL'], ['ATA', 'REUNIAO'], ['LISTA', 'PRESENCA']] },
+  { name: 'Modelos e Formulários', docs: [['FORMULARIO', 'PADRAO'], ['MODELO', 'DOCUMENTO'], ['CHECKLIST', 'PADRAO']] },
+  { name: 'Controle e Registros', docs: [['REGISTRO', 'CONTROLE'], ['PROTOCOLO', 'RECEBIMENTO'], ['TERMO', 'RESPONSABILIDADE']] },
+];
 
-// d: departamentos; a: áreas; t: níveis intermediários; b: ramificação; y: anos; f: arquivos por pasta final; x: armadilhas
+// d: setores; a: áreas próprias (até 3); c: áreas comuns (até 4); t: níveis intermediários; b: ramificação;
+// y: anos; f: arquivos por pasta final; x: armadilhas
 const PARAMS = [
-  { d: 2, a: 2, t: 0, b: 2, y: 2, f: 3, x: 3 },
-  { d: 3, a: 2, t: 1, b: 2, y: 2, f: 3, x: 4 },
-  { d: 4, a: 2, t: 1, b: 2, y: 3, f: 3, x: 5 },
-  { d: 5, a: 3, t: 1, b: 2, y: 3, f: 3, x: 6 },
-  { d: 6, a: 3, t: 1, b: 3, y: 3, f: 3, x: 8 },
-  { d: 6, a: 3, t: 2, b: 2, y: 3, f: 3, x: 9 },
-  { d: 7, a: 3, t: 2, b: 2, y: 3, f: 3, x: 10 },
-  { d: 8, a: 3, t: 2, b: 2, y: 3, f: 3, x: 12 },
-  { d: 9, a: 3, t: 2, b: 2, y: 4, f: 3, x: 14 },
-  { d: 10, a: 3, t: 3, b: 2, y: 3, f: 2, x: 16 },
+  { d: 2, a: 2, c: 0, t: 0, b: 2, y: 2, f: 4, x: 3 },
+  { d: 3, a: 3, c: 0, t: 1, b: 2, y: 2, f: 3, x: 4 },
+  { d: 4, a: 3, c: 1, t: 1, b: 2, y: 3, f: 3, x: 6 },
+  { d: 5, a: 3, c: 1, t: 1, b: 3, y: 3, f: 3, x: 8 },
+  { d: 6, a: 3, c: 2, t: 1, b: 3, y: 3, f: 3, x: 10 },
+  { d: 6, a: 3, c: 2, t: 2, b: 2, y: 3, f: 3, x: 12 },
+  { d: 7, a: 3, c: 3, t: 2, b: 2, y: 3, f: 3, x: 14 },
+  { d: 8, a: 3, c: 3, t: 2, b: 2, y: 3, f: 3, x: 16 },
+  { d: 9, a: 3, c: 4, t: 2, b: 2, y: 3, f: 3, x: 18 },
+  { d: 10, a: 3, c: 4, t: 2, b: 2, y: 3, f: 3, x: 22 },
 ];
 
 // Alvos: departamento, índice do tipo documental, ano, versão, status ('' = final), extensão
@@ -93,12 +102,15 @@ export function buildLevel(level, seed = 1) {
   const targetName = docName(target);
   const targetTiers = TIERS.slice(0, P.t).map((tier) => Math.floor(rand() * Math.min(P.b, tier.length)));
   const targetAreaIdx = Math.floor(rand() * P.a);
+  const pad2 = (n) => String(n).padStart(2, '0');
 
   deptList.forEach((dept) => {
-    const dNode = { n: dept.folder, c: [] };
+    const di = DEPTS.indexOf(dept);
+    const dNode = { n: `${pad2(di + 1)} - ${dept.folder}`, c: [] };
     root.c.push(dNode);
-    dept.areas.slice(0, P.a).forEach((area, areaIdx) => {
-      const aNode = { n: area, c: [] };
+    const areaList = [...dept.areas.slice(0, P.a).map((name) => ({ name, docs: dept.docs })), ...COMMON.slice(0, P.c)];
+    areaList.forEach((area, areaIdx) => {
+      const aNode = { n: `${pad2(di + 1)}.${areaIdx + 1} - ${area.name}`, c: [] };
       dNode.c.push(aNode);
       let level0 = [{ node: aNode, tiers: [] }];
       for (let ti = 0; ti < P.t; ti += 1) {
@@ -116,14 +128,14 @@ export function buildLevel(level, seed = 1) {
         years.forEach((year) => {
           const yNode = { n: String(year), c: [] };
           node.c.push(yNode);
-          leaves.push({ dept, areaIdx, year, folder: yNode, tiers });
+          leaves.push({ dept, areaIdx, year, folder: yNode, tiers, docs: area.docs, cl: `${pad2(di + 1)}.${areaIdx + 1}` });
         });
       });
     });
   });
 
   const used = new Map(); // folder -> Set de nomes
-  const addFile = (folder, d, forcedName) => {
+  const addFile = (folder, d, forcedName, cl = '') => {
     const name = forcedName || docName(d);
     const set = used.get(folder) || new Set();
     if (set.has(name)) return false;
@@ -133,7 +145,7 @@ export function buildLevel(level, seed = 1) {
     const created = `${d.year}-${pad(1 + Math.floor(rand() * 12))}-${pad(1 + Math.floor(rand() * 28))}`;
     folder.c.push({
       id: newId(), n: name, e: d.ext, s: kb * 1024, tp: d.tipo, as: d.assunto, d: d.dept,
-      v: pad(d.ver), st: d.status, cr: created, md: `${d.year + (d.ver > 2 ? 1 : 0) > 2026 ? 2026 : d.year + (d.ver > 2 ? 1 : 0)}-${pad(1 + Math.floor(rand() * 12))}-${pad(1 + Math.floor(rand() * 28))}`,
+      v: pad(d.ver), st: d.status, cl, cr: created, md: `${d.year + (d.ver > 2 ? 1 : 0) > 2026 ? 2026 : d.year + (d.ver > 2 ? 1 : 0)}-${pad(1 + Math.floor(rand() * 12))}-${pad(1 + Math.floor(rand() * 28))}`,
     });
     return true;
   };
@@ -141,7 +153,7 @@ export function buildLevel(level, seed = 1) {
   // Localização válida única do alvo
   const targetLeaf = leaves.find((l) => l.dept.code === T.dept && l.areaIdx === targetAreaIdx && l.year === T.year && l.tiers.every((v, i) => v === targetTiers[i]));
   let targetId = null;
-  addFile(targetLeaf.folder, target);
+  addFile(targetLeaf.folder, target, undefined, targetLeaf.cl);
   targetId = targetLeaf.folder.c[targetLeaf.folder.c.length - 1].id;
 
   // Enchimento regular: documentos plausíveis em todas as pastas finais
@@ -149,10 +161,10 @@ export function buildLevel(level, seed = 1) {
     let guard = 0; let added = 0;
     while (added < P.f && guard < 30) {
       guard += 1;
-      const [tipo, assunto] = pick(leaf.dept.docs);
+      const [tipo, assunto] = pick(leaf.docs);
       const d = { tipo, assunto, dept: leaf.dept.code, year: leaf.year, ver: 1 + Math.floor(rand() * 4), status: pick(['', '', 'RASCUNHO', 'REVISAO']), ext: pick(EXTS) };
       if (docName(d) === targetName) continue;
-      if (addFile(leaf.folder, d)) added += 1;
+      if (addFile(leaf.folder, d, undefined, leaf.cl)) added += 1;
     }
   });
 
@@ -186,10 +198,12 @@ export function buildLevel(level, seed = 1) {
     const at = i >= variants.length ? pick(sameAreaLeaves) : v.at;
     const name = v.name || docName(v.d);
     if (name === targetName) continue;
-    addFile(at.folder, v.d, name);
+    addFile(at.folder, v.d, name, at.cl);
   }
 
-  return { root, targetId, targetName, target, description: describeTarget(target), level };
+  root.c.sort((a, b) => a.n.localeCompare(b.n));
+  const fase = P.t >= 1 ? ` Arquivado na ${TIERS[0][targetTiers[0]]}.` : '';
+  return { root, targetId, targetName, target, description: describeTarget(target) + fase, level };
 }
 
 export function countNodes(node) {

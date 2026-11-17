@@ -68,12 +68,12 @@ test('10-14. documento correto/incorreto, tempo, pontuação e ranking', () => {
   assert.equal(a.player.total, 0);
   s.advance(18420);
   const ra = s.eng.openDoc(s.room.code, a.player.id, a.token, s.target());
-  assert.equal(ra.result.elapsedMs, 18420); assert.equal(ra.result.place, 1); assert.equal(ra.result.points, 1000);
+  assert.equal(ra.result.elapsedMs, 18420); assert.equal(ra.result.place, 1); assert.equal(ra.result.errors, 1); assert.equal(ra.result.points, 950); // 1000 − 50 por erro
   s.advance(1000);
   const rb = s.eng.openDoc(s.room.code, b.player.id, b.token, s.target());
   assert.equal(rb.result.place, 2); assert.equal(rb.result.points, 900);
   const st = s.eng.standings(s.room);
-  assert.deepEqual(st.map((x) => [x.nick, x.total]), [['Ana', 1000], ['Beto', 900], ['Caio', 0]]);
+  assert.deepEqual(st.map((x) => [x.nick, x.total]), [['Ana', 950], ['Beto', 900], ['Caio', 0]]);
   assert.equal(s.room.phase, 'playing'); // Caio ainda procura
   assert.equal(c.player.total, 0);
 });
@@ -233,4 +233,30 @@ test('árvores: dificuldade crescente e alvo único e sem ambiguidade em várias
     const c = countNodes(buildLevel(lvl, 1).root);
     assert.ok(c.files > prev, `nível ${lvl} deve ter mais arquivos`); prev = c.files;
   }
+});
+
+test('erros: contados por arquivo distinto, descontam pontos e entram no desempate', () => {
+  const s = setup(); const a = s.join('Ana'); const b = s.join('Beto'); s.go(); s.advance(1000);
+  const w1 = s.wrong();
+  assert.equal(s.eng.openDoc(s.room.code, a.player.id, a.token, w1).errors, 1);
+  assert.equal(s.eng.openDoc(s.room.code, a.player.id, a.token, w1).errors, 1); // mesmo arquivo: não soma de novo
+  let other = null; const t = s.eng._tree(s.room, 1);
+  const w = (n) => n.c.forEach((c) => { if (!other && c.id && c.id !== t.targetId && c.id !== w1) other = c.id; else if (!c.id) w(c); }); w(t.root);
+  assert.equal(s.eng.openDoc(s.room.code, a.player.id, a.token, other).errors, 2);
+  assert.equal(s.eng.hostView(s.room).players.find((p) => p.nick === 'Ana').wrong, 2);
+  const ra = s.eng.openDoc(s.room.code, a.player.id, a.token, s.target());
+  assert.equal(ra.result.points, 900); assert.equal(ra.result.errors, 2); // 1º lugar, 2 erros
+  const rb = s.eng.openDoc(s.room.code, b.player.id, b.token, s.target());
+  assert.equal(rb.result.points, 900); assert.equal(rb.result.errors, 0); // 2º lugar, sem erros
+  // pontos iguais: menos erros fica na frente, mesmo tendo concluído depois
+  assert.equal(s.eng.standings(s.room)[0].nick, 'Beto');
+  assert.equal(s.eng.standings(s.room)[0].errors, 0);
+});
+
+test('piso de pontos para quem concluiu mesmo com muitos erros', () => {
+  const s = setup(); const a = s.join('Ana'); s.go(); s.advance(1000);
+  const t = s.eng._tree(s.room, 1); const ids = [];
+  const w = (n) => n.c.forEach((c) => { if (c.id && c.id !== t.targetId) ids.push(c.id); else if (!c.id) w(c); }); w(t.root);
+  ids.slice(0, 30).forEach((id) => s.eng.openDoc(s.room.code, a.player.id, a.token, id));
+  assert.equal(s.eng.openDoc(s.room.code, a.player.id, a.token, s.target()).result.points, 100);
 });

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Clock, Info, LogOut, Search, Trophy } from 'lucide-react';
 import Explorer from '../components/Explorer.jsx';
-import DocViewer from '../components/DocViewer.jsx';
+import PreviewPane from '../components/DocViewer.jsx';
 import { Podium, RoundResults, Standings } from '../components/Ranking.jsx';
 import { Countdown } from './Host.jsx';
 import { fmtClock, fmtSeconds, ordinal } from '../lib/format.js';
@@ -16,10 +16,11 @@ function Result({ v }) {
     <section className="dh-resultcard" aria-live="polite">
       <span className="dh-check"><Check size={30} /></span>
       <h1>Documento encontrado!</h1>
-      <p className="lead">Você concluiu o desafio em <b>{fmtSeconds(r.elapsedMs)}</b> e conquistou a <b>{r.place}ª colocação</b> nesta rodada.</p>
+      <p className="lead">Você concluiu o desafio em <b>{fmtSeconds(r.elapsedMs)}</b> e conquistou a <b>{r.place}ª colocação</b> nesta rodada, com <b>{r.errors === 1 ? '1 erro' : `${r.errors ?? 0} erros`}</b>.</p>
       <dl className="dh-stats">
         <div><dt>Tempo</dt><dd>{fmtSeconds(r.elapsedMs)}</dd></div>
         <div><dt>Colocação</dt><dd>{ordinal(r.place)}</dd></div>
+        <div><dt>Erros</dt><dd>{r.errors ?? 0}</dd></div>
         <div><dt>Pontos</dt><dd>+{r.points}</dd></div>
         <div><dt>Acumulado</dt><dd>{v.me.total}</dd></div>
       </dl>
@@ -59,7 +60,7 @@ export default function Player({ game, timer }) {
         <h1 className="dh-final-title">Fim de jogo!</h1>
         <Podium rows={v.standings.slice(0, 3)} />
         <section className="dh-resultcard compact"><h2>Você ficou em {me.pos ? ordinal(me.pos) : '—'} lugar</h2>
-          <dl className="dh-stats"><div><dt>Pontuação total</dt><dd>{me.total}</dd></div><div><dt>Tempo total</dt><dd>{fmtSeconds(me.totalMs)}</dd></div><div><dt>Níveis concluídos</dt><dd>{me.levelsDone}/{v.totalLevels}</dd></div><div><dt>Colocação</dt><dd>{me.pos ? ordinal(me.pos) : '—'}</dd></div></dl></section>
+          <dl className="dh-stats"><div><dt>Pontuação total</dt><dd>{me.total}</dd></div><div><dt>Tempo total</dt><dd>{fmtSeconds(me.totalMs)}</dd></div><div><dt>Níveis concluídos</dt><dd>{me.levelsDone}/{v.totalLevels}</dd></div><div><dt>Erros</dt><dd>{me.totalErrors}</dd></div><div><dt>Colocação</dt><dd>{me.pos ? ordinal(me.pos) : '—'}</dd></div></dl></section>
         <section className="dh-panel wide"><h2>Classificação completa</h2><Standings rows={v.standings} meId={me.id} /></section>
         <button type="button" className="dh-btn ghost" onClick={game.leave}><LogOut size={16} /> Sair</button>
       </main>
@@ -91,10 +92,11 @@ export default function Player({ game, timer }) {
       {v.phase === 'paused' && <div className="dh-pause" role="alert"><h1>Partida pausada</h1><p>O professor pausou o jogo. O cronômetro está parado.</p></div>}
       <header className="dh-playbar">
         <div className="dh-targetmini"><span><Search size={14} aria-hidden="true" /> Nível {v.level}/{v.totalLevels} — {c.title}</span><strong>{c.description}</strong>{c.fileName && <code>{c.fileName}</code>}</div>
-        <div className="dh-clocks"><div role="timer" aria-label="Tempo restante" className={timer.remainingMs < 15000 ? 'low' : ''}>{fmtClock(timer.remainingMs)}<small>restante</small></div><div>{fmtSeconds(timer.elapsedMs)}<small>seu tempo</small></div></div>
+        <div className="dh-clocks"><div role="timer" aria-label="Tempo restante" className={timer.remainingMs < 15000 ? 'low' : ''}>{fmtClock(timer.remainingMs)}<small>restante</small></div><div>{fmtSeconds(timer.elapsedMs)}<small>seu tempo</small></div><div className={me.errors ? 'err' : ''}>{me.errors}<small>{me.errors === 1 ? 'erro' : 'erros'}</small></div></div>
       </header>
-      {game.tree?.level === v.level ? <Explorer root={game.tree.root} onOpenFile={openFile} disabled={v.phase === 'paused'} /> : <p className="dh-muted center">Carregando o arquivo da empresa…</p>}
-      {doc && <DocViewer file={doc.file} path={doc.path} verdict={doc.verdict} onClose={() => setDoc(null)} />}
+      {game.tree?.level === v.level
+        ? <Explorer root={game.tree.root} onOpenFile={openFile} disabled={v.phase === 'paused'} selectedId={doc?.file.id} side={doc && <PreviewPane file={doc.file} path={doc.path} verdict={doc.verdict} onClose={() => setDoc(null)} />} />
+        : <p className="dh-muted center">Carregando o arquivo da empresa…</p>}
     </main>
   );
 }
