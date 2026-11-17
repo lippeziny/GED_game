@@ -1,9 +1,10 @@
 FROM node:20-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm install --include=dev
 COPY . .
 RUN npm run build
-ENV NODE_ENV=production
+ENV NODE_ENV=production DATA_DIR=/data
+VOLUME /data
 EXPOSE 3000
 CMD ["npm", "start"]

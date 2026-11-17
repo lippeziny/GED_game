@@ -2,10 +2,14 @@ services:
   - type: web
     name: drive-hunt-ged
     runtime: node
-    plan: free
-    buildCommand: npm install && npm run build
+    plan: free            # para persistência real, use plano pago + disco (veja README)
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DATA_DIR
+        value: /var/data   # com disco montado em /var/data; no plano free o diretório é efêmero
+      - key: PONTOS_POR_COLOCACAO
+        value: "1000,900,800,700,600"
