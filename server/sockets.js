@@ -98,8 +98,8 @@ export function registerSockets(io, engine, { store, trustProxy = false, log = c
     on('player:join', (p, ack) => {
       const ip = ipOf(socket);
       if (failedJoin.blocked(ip)) return answer(ack, { ok: false, error: 'Muitas tentativas inválidas. Aguarde alguns minutos.', code: 'rate' });
-      const r = engine.joinRoom(str(p.code, 8), str(p.nick, 80));
-      if (!r.ok) { if (['not_found', 'nick', 'duplicate'].includes(r.code)) failedJoin.take(ip); return answer(ack, r); }
+      const r = engine.joinRoom(str(p.code, 8), str(p.nick, 80), typeof p.avatar === 'string' ? p.avatar : undefined);
+      if (!r.ok) { if (['not_found', 'nick', 'duplicate', 'avatar'].includes(r.code)) failedJoin.take(ip); return answer(ack, r); }
       bind(socket, { role: 'player', code: r.room.code, playerId: r.player.id, token: r.token });
       answer(ack, { ok: true, code: r.room.code, playerId: r.player.id, token: r.token, late: r.late, view: engine.playerView(r.room, r.player) });
       broadcast(r.room); // entrega a árvore se a rodada já estiver em andamento

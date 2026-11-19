@@ -19,6 +19,18 @@ export function normalizeNick(raw) {
   return { nick, key };
 }
 
+// Foto do jogador: data URL já recortada e reduzida pelo cliente (JPEG/PNG/WebP, até ~45 KB).
+export function validateAvatar(v) {
+  if (v === undefined || v === null || v === '') return { avatar: null };
+  const m = typeof v === 'string' && v.length <= 62000 ? /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(v) : null;
+  if (!m) return { error: 'Foto inválida. Escolha outra imagem.' };
+  const b = Buffer.from(m[2], 'base64');
+  const okMagic = (m[1] === 'image/jpeg' && b[0] === 0xff && b[1] === 0xd8)
+    || (m[1] === 'image/png' && b.slice(0, 4).toString('hex') === '89504e47')
+    || (m[1] === 'image/webp' && b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WEBP');
+  return okMagic ? { avatar: v, mime: m[1], bytes: b } : { error: 'Foto inválida. Escolha outra imagem.' };
+}
+
 const secret = () => crypto.randomBytes(18).toString('hex');
 const safeEqual = (a, b) => {
   const x = Buffer.from(String(a ?? '')); const y = Buffer.from(String(b ?? ''));
@@ -67,11 +79,13 @@ export class GameEngine {
   _player(room, id) { return room.players.find((p) => p.id === id && !p.removed) || null; }
   _active(room) { return room.players.filter((p) => !p.removed); }
 
-  joinRoom(code, rawNick) {
+  joinRoom(code, rawNick, rawAvatar) {
     const room = this.getRoom(code);
     if (!room || room.phase === 'closed') return fail('Sala não encontrada. Confira o PIN.', 'not_found');
     const n = normalizeNick(rawNick);
     if (n.error) return fail(n.error, 'nick');
+    const av = validateAvatar(rawAvatar);
+    if (av.error) return fail(av.error, 'avatar');
     if (room.phase === 'finished') return fail('Esta partida já terminou.', 'finished');
     if (room.locked) return fail('O professor bloqueou novas entradas nesta sala.', 'locked');
     if (room.phase !== 'lobby' && !room.lateJoin) return fail('A partida já começou e a entrada tardia está desativada.', 'started');
@@ -81,6 +95,7 @@ export class GameEngine {
       id: crypto.randomUUID(), token: secret(), nick: n.nick, key: n.key, online: true,
       joinedAt: this.now(), order: room.players.length, eligibleFrom: room.phase === 'lobby' ? 1 : room.level + 1,
       total: 0, totalMs: 0, results: [], wrong: {}, wrongIds: {}, removed: false,
+      avatar: av.avatar, av: av.avatar ? crypto.createHash('sha1').update(av.avatar).digest('hex').slice(0, 8) : null,
     };
     room.players.push(player);
     this._touch(room);
@@ -276,13 +291,19 @@ export class GameEngine {
     return null;
   }
 
+  avatarOf(code, playerId) {
+    const room = this.getRoom(code); const p = room && this._player(room, String(playerId));
+    if (!p || !p.avatar) return null;
+    const v = validateAvatar(p.avatar); return v.bytes ? { mime: v.mime, bytes: v.bytes, av: p.av } : null;
+  }
+
   // ---------- Ranking ----------
   standings(room) {
     const errs = (p) => Object.values(p.wrong || {}).reduce((a, n) => a + n, 0);
     // Pontos (tempo + erros) → menos erros → menor tempo total → ordem de entrada
     const list = this._active(room).slice().sort((a, b) => b.total - a.total || errs(a) - errs(b) || (a.totalMs - b.totalMs) || a.order - b.order);
     return list.map((p, i) => ({
-      pos: i + 1, id: p.id, nick: p.nick, total: p.total, totalMs: p.totalMs, errors: errs(p), levelsDone: p.results.length, online: p.online,
+      pos: i + 1, id: p.id, nick: p.nick, av: p.av, total: p.total, totalMs: p.totalMs, errors: errs(p), levelsDone: p.results.length, online: p.online,
       last: p.results.find((x) => x.level === room.level) || null,
     }));
   }
@@ -315,14 +336,14 @@ export class GameEngine {
     const ended = ['roundEnd', 'finished'].includes(room.phase);
     return {
       ...v, role: 'player',
-      me: { id: player.id, nick: player.nick, total: player.total, totalMs: player.totalMs, errors: r && r.level === room.level ? (player.wrong[r.level] || 0) : 0, totalErrors: me?.errors ?? 0, pos: me?.pos ?? null, levelsDone: player.results.length, eligible: Boolean(inRound), waitingNext: !inRound && room.phase !== 'lobby' && room.phase !== 'finished', result: mine ? { ...mine } : null },
+      me: { id: player.id, nick: player.nick, av: player.av, total: player.total, totalMs: player.totalMs, errors: r && r.level === room.level ? (player.wrong[r.level] || 0) : 0, totalErrors: me?.errors ?? 0, pos: me?.pos ?? null, levelsDone: player.results.length, eligible: Boolean(inRound), waitingNext: !inRound && room.phase !== 'lobby' && room.phase !== 'finished', result: mine ? { ...mine } : null },
       challenge: ['countdown', 'playing', 'paused', 'roundEnd'].includes(room.phase) ? this._challenge(room, ended) : null,
       progress: r ? { found: r.results.length, of: r.participants.length } : null,
       roundResults: ended && r ? r.results.map((x) => ({ ...x })) : [],
       standings: ended || room.showRanking ? st : st.filter((s) => s.id === player.id),
       tip: ended && r ? TIPS[r.level - 1] : null,
       endReason: ended && r ? r.endReason : null,
-      names: room.phase === 'lobby' ? this._active(room).map((p) => ({ id: p.id, nick: p.nick, online: p.online })) : undefined,
+      names: room.phase === 'lobby' ? this._active(room).map((p) => ({ id: p.id, nick: p.nick, av: p.av, online: p.online })) : undefined,
     };
   }
 
@@ -333,7 +354,7 @@ export class GameEngine {
       const inRound = r && r.participants.includes(p.id);
       let status = 'lobby';
       if (r && ['countdown', 'playing', 'paused', 'roundEnd'].includes(room.phase)) status = res ? 'found' : inRound ? 'searching' : 'waiting';
-      return { id: p.id, nick: p.nick, online: p.online, status, total: p.total, totalMs: p.totalMs, wrong: r ? (p.wrong[r.level] || 0) : 0, result: res ? { ...res } : null };
+      return { id: p.id, nick: p.nick, av: p.av, online: p.online, status, total: p.total, totalMs: p.totalMs, wrong: r ? (p.wrong[r.level] || 0) : 0, result: res ? { ...res } : null };
     });
     return {
       ...v, role: 'host', players,

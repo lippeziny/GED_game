@@ -7,6 +7,8 @@ import { Server } from 'socket.io';
 import { GameEngine } from './engine.js';
 import { FileStore, NullStore } from './store.js';
 import { registerSockets } from './sockets.js';
+import { searchImages, fetchThumb } from './images.js';
+import { KeyedLimiter } from './ratelimit.js';
 import { DEFAULT_POINTS, ERROR_PENALTY } from '../shared/constants.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -47,6 +49,29 @@ registerSockets(io, engine, { store, trustProxy });
 setInterval(() => engine.tick(), 250).unref();
 // Salva periodicamente enquanto houver rodada em andamento (o horário salvo limita o tempo "perdido" numa queda).
 setInterval(() => { if ([...engine.rooms.values()].some((r) => r.phase === 'playing')) store.schedule(() => engine.serialize()); }, 5000).unref();
+
+// ---- Foto do jogador e busca de imagens ----
+const imageProviders = String(process.env.IMAGENS_PROVEDORES || 'openverse').split(',').map((x) => x.trim()).filter(Boolean);
+const searchOn = process.env.IMAGENS_BUSCA !== 'off';
+const searchLimit = new KeyedLimiter(40, 10 * 60 * 1000);
+const thumbLimit = new KeyedLimiter(400, 10 * 60 * 1000);
+app.get('/api/imagens', async (req, res) => {
+  if (!searchOn) return res.status(503).json({ ok: false, error: 'A busca de imagens está desativada. Envie uma foto do aparelho.' });
+  if (!searchLimit.take(req.ip)) return res.status(429).json({ ok: false, error: 'Muitas buscas seguidas. Aguarde um pouco.' });
+  const r = await searchImages(String(req.query.q || ''), { providers: imageProviders });
+  res.status(r.ok ? 200 : 502).json(r);
+});
+app.get('/api/imagem', async (req, res) => {
+  if (!searchOn || !thumbLimit.take(req.ip)) return res.status(429).end();
+  const r = await fetchThumb(String(req.query.p || ''), String(req.query.r || ''));
+  if (r.error) return res.status(r.status).type('text').send(r.error);
+  res.set({ 'Content-Type': r.mime, 'Cache-Control': 'public, max-age=86400' }).send(r.bytes);
+});
+app.get('/api/avatar/:code/:id', (req, res) => {
+  const a = engine.avatarOf(req.params.code, req.params.id);
+  if (!a) return res.status(404).end();
+  res.set({ 'Content-Type': a.mime, 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff' }).send(a.bytes);
+});
 
 const distPath = path.resolve(__dirname, '../dist');
 const indexHtml = path.join(distPath, 'index.html');

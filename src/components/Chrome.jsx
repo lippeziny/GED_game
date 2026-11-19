@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Contrast, HardDrive, Maximize2, Minus, Plus, SlidersHorizontal, Wifi, WifiOff, X, Zap } from 'lucide-react';
 
 const KEY = 'drive-hunt-ged.a11y';
+export const THEMES = [['lavanda', 'Lavanda', '#6d5df0'], ['oceano', 'Oceano', '#0f86c9'], ['menta', 'Menta', '#14996f'], ['por-do-sol', 'Pôr do sol', '#e5566d'], ['noite', 'Noite', '#1e1b30']];
 export function useA11y() {
-  const [s, setS] = useState(() => { try { return { scale: 1, contrast: false, calm: false, big: false, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { scale: 1, contrast: false, calm: false, big: false }; } });
+  const [s, setS] = useState(() => { try { return { scale: 1, contrast: false, calm: false, big: false, theme: 'lavanda', ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { scale: 1, contrast: false, calm: false, big: false, theme: 'lavanda' }; } });
   useEffect(() => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* ignore */ } }, [s]);
   return [s, setS];
 }
@@ -22,6 +23,8 @@ export function TopBar({ connected, attempts, code, a11y, setA11y, onHome }) {
       {open && (
         <div className="dh-a11y" role="dialog" aria-label="Opções de acessibilidade">
           <div className="dh-a11y-head"><strong>Acessibilidade</strong><button type="button" className="dh-x" onClick={() => setOpen(false)} aria-label="Fechar"><X size={16} /></button></div>
+          <div role="group" aria-label="Tema de cores"><span className="dh-lbl">Tema</span>
+            <div className="dh-themes">{THEMES.map(([id, name, c]) => <button key={id} type="button" className="dh-swatch" style={{ background: c }} aria-pressed={a11y.theme === id} aria-label={`Tema ${name}`} title={name} onClick={() => setA11y((v) => ({ ...v, theme: id }))} />)}</div></div>
           <div className="dh-size"><span>Tamanho do texto</span>
             <button type="button" onClick={() => setA11y((v) => ({ ...v, scale: Math.max(0.9, +(v.scale - 0.1).toFixed(2)) }))} aria-label="Diminuir texto"><Minus size={15} /></button>
             <b>{Math.round(a11y.scale * 100)}%</b>

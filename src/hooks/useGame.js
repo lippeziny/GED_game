@@ -44,8 +44,8 @@ export function useGame() {
     return r;
   }, [toast]);
 
-  const join = useCallback(async (code, nick) => {
-    const r = await emitAck('player:join', { code, nick });
+  const join = useCallback(async (code, nick, avatar) => {
+    const r = await emitAck('player:join', { code, nick, avatar });
     if (!r.ok) return r;
     const s = { role: 'player', code: r.code, playerId: r.playerId, token: r.token, nick }; session.save(s); setSess(s); stamp.current = performance.now(); setView(r.view); setEnded(null);
     return r;

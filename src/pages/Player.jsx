@@ -5,6 +5,7 @@ import PreviewPane from '../components/DocViewer.jsx';
 import { Podium, RoundResults, Standings } from '../components/Ranking.jsx';
 import { Countdown } from './Host.jsx';
 import { fmtClock, fmtSeconds, ordinal } from '../lib/format.js';
+import Avatar from '../components/Avatar.jsx';
 
 function Wait({ icon, title, children }) {
   return <main className="dh-stage center"><div className="dh-wait">{icon}<h1>{title}</h1>{children}</div></main>;
@@ -49,7 +50,7 @@ export default function Player({ game, timer }) {
       <Wait icon={<Check size={36} />} title={`Você está na partida, ${me.nick}!`}>
         <p>Aguardando o professor iniciar. A partida ainda não começou.</p>
         <p className="dh-count-line">{v.count.total} participante{v.count.total === 1 ? '' : 's'} na sala</p>
-        <ul className="dh-chips">{(v.names || []).map((n) => <li key={n.id} className={n.id === me.id ? 'self' : ''}>{n.nick}</li>)}</ul>
+        <ul className="dh-chips">{(v.names || []).map((n) => <li key={n.id} className={n.id === me.id ? 'self' : ''}><Avatar id={n.id} nick={n.nick} av={n.av} size={22} />{n.nick}</li>)}</ul>
       </Wait>
     );
   }
@@ -57,7 +58,7 @@ export default function Player({ game, timer }) {
   if (v.phase === 'finished') {
     return (
       <main className="dh-stage final">
-        <h1 className="dh-final-title">Fim de jogo!</h1>
+        <h1 className="dh-final-title">Pódio</h1>
         <Podium rows={v.standings.slice(0, 3)} />
         <section className="dh-resultcard compact"><h2>Você ficou em {me.pos ? ordinal(me.pos) : '—'} lugar</h2>
           <dl className="dh-stats"><div><dt>Pontuação total</dt><dd>{me.total}</dd></div><div><dt>Tempo total</dt><dd>{fmtSeconds(me.totalMs)}</dd></div><div><dt>Níveis concluídos</dt><dd>{me.levelsDone}/{v.totalLevels}</dd></div><div><dt>Erros</dt><dd>{me.totalErrors}</dd></div><div><dt>Colocação</dt><dd>{me.pos ? ordinal(me.pos) : '—'}</dd></div></dl></section>

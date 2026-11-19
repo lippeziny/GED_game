@@ -3,6 +3,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Check, ChevronRight, Copy, Eye, EyeOff, Lock, LockOpen, Monitor, Pause, Play, Power, Square, Trophy, UserX, Users, X } from 'lucide-react';
 import { Podium, RoundResults, Standings } from '../components/Ranking.jsx';
 import { fmtClock, fmtSeconds } from '../lib/format.js';
+import Avatar from '../components/Avatar.jsx';
 
 const STATUS = { searching: 'Procurando', found: 'Encontrou', waiting: 'Próxima rodada', lobby: 'No lobby' };
 
@@ -42,7 +43,7 @@ function HostLobby({ v, game }) {
         <section className="dh-panel">
           <div className="dh-panel-head"><h2><Users size={19} /> {v.count.total} participante{v.count.total === 1 ? '' : 's'} <small>({v.count.online} conectado{v.count.online === 1 ? '' : 's'})</small></h2></div>
           <ul className="dh-chips">{v.players.map((p) => (
-            <li key={p.id} className={p.online ? '' : 'off'}><span className={`dot ${p.online ? 'on' : ''}`} aria-label={p.online ? 'conectado' : 'desconectado'} />{p.nick}
+            <li key={p.id} className={p.online ? '' : 'off'}><Avatar id={p.id} nick={p.nick} av={p.av} size={22} /><span className={`dot ${p.online ? 'on' : ''}`} aria-label={p.online ? 'conectado' : 'desconectado'} />{p.nick}
               <button type="button" aria-label={`Remover ${p.nick}`} onClick={() => game.hostAction('kick', p.id)}><UserX size={13} /></button></li>))}
             {!v.players.length && <li className="empty">Aguardando participantes…</li>}</ul>
           <div className="dh-switches">
@@ -85,7 +86,7 @@ function Round({ v, game, timer }) {
       <div className="dh-two">
         <section className="dh-panel"><h2>Participantes</h2>
           <ul className="dh-live">{sorted.map((p) => (
-            <li key={p.id} className={`${p.status} ${p.online ? '' : 'off'}`}><span className={`dot ${p.online ? 'on' : ''}`} aria-hidden="true" /><strong>{p.nick}</strong>
+            <li key={p.id} className={`${p.status} ${p.online ? '' : 'off'}`}><Avatar id={p.id} nick={p.nick} av={p.av} size={30} /><strong>{p.nick}</strong>
               <em>{!p.online ? 'Desconectado' : STATUS[p.status]}{p.status === 'searching' && p.wrong ? ` · ${p.wrong} erro${p.wrong > 1 ? 's' : ''}` : ''}</em>
               <span>{p.result ? `${p.result.place}º · ${fmtSeconds(p.result.elapsedMs)} · +${p.result.points}` : '—'}</span><b>{p.total}</b></li>))}</ul></section>
         <section className="dh-panel"><h2>Classificação da rodada</h2><RoundResults rows={v.roundResults} /></section>
@@ -119,7 +120,7 @@ function RoundEnd({ v, game }) {
 function Finished({ v, game }) {
   return (
     <main className="dh-stage final">
-      <h1 className="dh-final-title">Resultado final</h1>
+      <h1 className="dh-final-title">Pódio</h1>
       <Podium rows={v.standings.slice(0, 3)} />
       <section className="dh-panel wide"><h2>Classificação completa</h2><Standings rows={v.standings} /></section>
       <div className="dh-controls"><button type="button" className="dh-btn danger" onClick={() => game.hostAction('close')}><Power size={16} /> Encerrar sessão</button></div>
